@@ -15,7 +15,7 @@ api = tweepy.API(auth,wait_on_rate_limit=True)
 cryptolists = [1393929796825067522, 859922654681346049, 904733535612821504, 899718321439944710]
 	    
 alltweets = []
-numpages = 4
+numpages = 5
 numtweets = 200
 
 # get all tweets by list, combine lists of tweets into 1 list
@@ -53,13 +53,13 @@ for alltweet in alltweets:
 		seentweets.add(alltweet.id)
 
 print('Duplicate tweets removed!')
-print('Number of unique tweets fetched: ', len(uniquetweets))
-print('Oldest tweet: ', uniquetweets[-1].created_at)
-print('Newest tweet: ', uniquetweets[0].created_at)
+print('Number of unique tweets fetched:', len(uniquetweets))
+print('Oldest tweet:', uniquetweets[-1].created_at)
+print('Newest tweet:', uniquetweets[0].created_at)
 
 print('------------')
 
-symbols = ['$BTC', '$ETH', '$DOGE', '$XRP', '$LTC', '$BCH', '$EOS', '$ADA', '$ETC', '$DASH', '$USDT']
+symbols = ['$BTC', '$ETH', '$DOGE', '$XRP', '$LTC', '$BCH', '$EOS', '$ADA', '$ETC', '$DASH', '$USDT', '$ZEC', '$XMR', '$ZIL']
 
 db = TinyDB('db.json')
 db.truncate()
@@ -70,6 +70,7 @@ ftweets = []
 cg = CoinGeckoAPI()
 cglist = cg.get_coins_list()
 cgfilt = []
+mccalls = 0
 
 # get all cgids by symbol and add to dict in cgfilt list
 print('All cgids found by symbol:')
@@ -88,7 +89,7 @@ for item in cgfilt:
 	item.update({'price':price[item['cgid']]['usd']})
 	item.update({'24hr':price[item['cgid']]['usd_24h_change']})
 
-# check if cgfilt symbol in uniquetweets, record num mentions, avg sentiment
+# check if cgfilt symbol in uniquetweet, record num mentions, avg sentiment
 print('Tweets evaluated per symbol mention:')
 for uniquetweet in uniquetweets:
 	text = re.sub(r'@\S+|https?://\S+', '', uniquetweet.full_text)
@@ -106,6 +107,9 @@ for uniquetweet in uniquetweets:
 	    		'txt': text
 			}
 			sentiments = requests.post(url, data=payload)
+			
+			mccalls += 1	
+			
 			data = sentiments.json()
 			score = data['score_tag']
 			
@@ -123,48 +127,13 @@ for uniquetweet in uniquetweets:
 			print('Mention', item['symbol'], 'found and evaluated!')
 			item['tweets'].append(text)
 			
+print('Number of meaningcloud calls:', mccalls)
+			
 print('----------')
 
 print(json.dumps(cgfilt, indent=4, sort_keys=True))
-
-# find tweets containing symbols
-for uniquetweet in uniquetweets:
-	text = re.sub(r'@\S+|https?://\S+', '', uniquetweet.full_text)
-	text = re.sub('\n', ' ', text)
-	if any(x in text.upper() for x in symbols):
-		fsymbol = []
-		for symbol in symbols:
-			if symbol in text.upper():
-				fsymbol.append(symbol)
-				#print('symbols: ', end = '')
-				#print(fsymbol)
-		jsymbols = ''
-		sep = (',')
-		#jsymbols = sep.join(fsymbol)
-	
-		#print('Symbols found in tweet: ', fsymbol)
-		#print('Text: ', text)
 		
-		#payload={
-	    	#'key': MCKEY,
-	    	#'lang': 'en',
-	    	#'txt': text
-		#}
-		#sentiments = requests.post(url, data=payload)
-		
-		#data = sentiments.json()
-		#score = data['score_tag']
-		#print('Sentiment: ', score)
-		
-		#db.insert({'id':uniquetweet.id, 'text':text, 'score':score, 'date':str(uniquetweet.created_at), 'symbols':fsymbol})
-		
-		#ftweets.append(uniquetweet)
-		
-		#print('Remaining credits: ', data['status']['remaining_credits'])
-		
-		#print('------------')
-
-#print('Number of analysed tweets: ', len(uniquetweets))
+#db.insert({'id':uniquetweet.id, 'text':text, 'score':score, 'date':str(uniquetweet.created_at), 'symbols':fsymbol})
 
 print('------------')
 
