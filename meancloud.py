@@ -5,6 +5,7 @@ import tweepy
 from tinydb import TinyDB, Query
 import re
 import os
+from pycoingecko import CoinGeckoAPI
 
 # auth twitter api
 auth = tweepy.OAuthHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)
@@ -15,7 +16,7 @@ cryptolists = [1393929796825067522, 859922654681346049, 904733535612821504, 8997
 	    
 alltweets = []
 numpages = 1
-numtweets = 200
+numtweets = 2
 
 # get all tweets by list, combine lists of tweets into 1 list
 # get tweets per page in list
@@ -49,18 +50,13 @@ for alltweet in alltweets:
 		uniquetweets.append(alltweet)
 		seentweets.add(alltweet.id)
 
-print('Number of unique tweets fetched: ', end = '')		
-print(len(uniquetweets))
-
 print('Duplicate tweets removed!')
-
+print('Number of unique tweets fetched: ', len(uniquetweets))
 print('Oldest tweet: ', uniquetweets[-1].created_at)
-
 print('Newest tweet: ', uniquetweets[0].created_at)
 
 print('------------')
 
-punctuations = '''!()-[]{};:'"\,<>./?@#%^&*_~'''
 symbols = ['$BTC', '$ETH', '$DOGE', '$XRP', '$LTC', '$BCH', '$EOS', '$ADA']
 
 db = TinyDB('db.json')
@@ -69,6 +65,23 @@ db.all()
 
 url = "https://api.meaningcloud.com/sentiment-2.1"
 ftweets = []
+cg = CoinGeckoAPI()
+cglist = cg.get_coins_list()
+cgfilt = []
+
+for item in cglist:
+	#print(item.get('id'))
+	for symbol in symbols:
+		if symbol[1:].lower() == item.get('symbol') and 'peg' not in item.get('id'):
+			print(symbol,item.get('id'))
+			cgid = item.get('id')
+			cgfilt.append({'symbol':symbol, 'cgid':cgid})
+
+for item in cgfilt:
+	price = cg.get_price(ids=item['cgid'], vs_currencies='usd')
+	item.update({'price':price[item['cgid']]['usd']})
+	
+print(cgfilt)
 
 for uniquetweet in uniquetweets:
 	text = re.sub(r'@\S+|https?://\S+', '', uniquetweet.full_text)
@@ -113,4 +126,4 @@ print('------------')
 with open('db.json', 'r') as handle:
 	parsed = json.load(handle)
 
-#print(json.dumps(parsed, indent=4, sort_keys=True))
+print(json.dumps(parsed, indent=4, sort_keys=True))
