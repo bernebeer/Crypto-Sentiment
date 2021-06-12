@@ -1,12 +1,7 @@
-import requests
-import json
+import requests, json, tweepy, re, os, time
 from config import *
-import tweepy
 from tinydb import TinyDB, Query
-import re
-import os
 from pycoingecko import CoinGeckoAPI
-import time
 from pprint import pprint
 
 print('Running...')
@@ -78,7 +73,7 @@ cglist = cg.get_coins_list()
 # final dict of dicts of data
 results = {}
 
-# get all cgids by symbol and add to list of dicts in results
+# get all cgids by symbol and create main dicts in results
 print('All cgids found by symbol:')
 for item in cglist:
 	for symbol in symbols:
@@ -89,16 +84,14 @@ for item in cglist:
 
 deli()
 
-# get dict of prices all symbols in single api call
+# get prices of all cg ids in results per single api call
 print('Updating prices...')
 
-symbols = []
-	
+cgnames = []
 for key, value in results.items():
-	symbols.append(key)
+	cgnames.append(key)
 
-#print('symbols done')
-prices = cg.get_price(ids=symbols, vs_currencies='usd', include_24hr_change='true')
+prices = cg.get_price(ids=cgnames, vs_currencies='usd', include_24hr_change='true')
 
 deli()
 
@@ -111,25 +104,27 @@ for key, value in results.items():
 				results[key].update({'price':value2['usd']})
 				results[key].update({'24hr':value2['usd_24h_change']})
 
-# add dict tweets to dict results + sentiment...
-
 deli()
 
-# check if results symbol in uniquetweet, record num mentions, avg sentiment
 print('Evaluating tweets based on symbol found...')
 
 url = "https://api.meaningcloud.com/sentiment-2.1"
 mccalls = 0
 
 tweets = {}
-# get tweets, and add to list of sent tweets in results
+# test tweet if symbol in, evaluate, add to results
 for uniquetweet in uniquetweets:
+	
+	# strip crap from tweettext
 	text = re.sub(r'@\S+|https?://\S+', '', uniquetweet.full_text)
 	text = re.sub('\n', ' ', text)
 	
+	# loop through all result key value pairs
+	# check if symbol in text, do stuff
 	for key, value in results.items():
 		if value['symbol'] in text:
-
+			
+			# send tweettext to sentiment api
 			payload={
 	   	 	'key': MCKEY,
 	    		'lang': 'en',
@@ -140,9 +135,11 @@ for uniquetweet in uniquetweets:
 			
 			mccalls += 1
 			
+			# calc avg sentiment
 			data = sentiments.json()
 			score = data['score_tag']
 			
+			# get old stored avg sentiment for averaging
 			avgsent = results[key]['avgsentiment']
 			if score == 'P+':
 				avgsent += 2
@@ -152,9 +149,11 @@ for uniquetweet in uniquetweets:
 				avgsent -= 1
 			elif score == 'N+':
 				avgsent -= 2
-				
+			
+			# write avg sentiment to results
 			results[key].update(avgsentiment = avgsent)
 			
+			# write tweet to results
 			i = len(results[key]['tweets'])
 			results[key]['tweets'].update({i + 1:{'tweet':text,'created':str(uniquetweet.created_at),'sentiment':score}})
 			
@@ -164,6 +163,7 @@ deli()
 		
 pprint(results)
 
+# dump results as json file
 f = open('results.json', 'w')
 f.write(json.dumps(results))
 f.close()
@@ -196,8 +196,3 @@ db = TinyDB('db.json')
 db.truncate()
 db.all()
 #db.insert({'id':uniquetweet.id, 'text':text, 'score':score, 'date':str(uniquetweet.created_at), 'symbols':fsymbol})
-
-#with open('db.json', 'r') as handle:
-	#parsed = json.load(handle)
-
-#print(json.dumps(parsed, indent=4, sort_keys=True))
