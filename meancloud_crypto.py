@@ -21,23 +21,26 @@ alltweets = []
 numpages = 1
 numtweets = 100
 
+# animation between segments
 def deli():
 	for x in range (0,10):
 		print('.', sep='', end='', flush=True)
 		time.sleep(0.07)
 	print('\n')
 
-# get all tweets by list, combine lists of tweets into 1 list
-# get tweets per page in list
+# get all tweets, add to list, combine lists of tweets into 1 list
 for cryptolist in cryptolists:
 
 	tweets = api.list_timeline(list_id = cryptolist, count = numtweets, tweet_mode = "extended", include_rts = True)
+	# record tweet lastid for paging (max ~200 per page)
 	lastid = tweets[-1].id
 
+	# get tweets per following page (tweet id no higher than)
 	for numpage in range(numpages - 1):
 		tweets.extend(api.list_timeline(list_id = cryptolist, max_id = lastid - 1, count = numtweets, tweet_mode = "extended", include_rts = False))
 		lastid = tweets[-1].id
-			
+	
+	# add tweet to alltweets list
 	alltweets.extend(tweets)
 	
 	print('List ' + str(cryptolists.index(cryptolist) + 1) + ' fetched!')
@@ -67,6 +70,7 @@ print('Newest tweet:', uniquetweets[0].created_at)
 
 deli()
 
+# list of symbols to check text for
 symbols = ['$BTC', '$ETH', '$DOGE', '$XRP', '$LTC', '$BCH', '$EOS', '$ADA', '$ETC', '$DASH', '$USDT', '$ZEC', '$XMR', '$ZIL', '$MTL']
 
 cglist = cg.get_coins_list()
@@ -130,6 +134,7 @@ for uniquetweet in uniquetweets:
 	    		'lang': 'en',
 	    		'txt': text
 			}
+			# requests data
 			sentiments = requests.post(url, data=payload)
 			print('.', sep='', end='', flush=True)
 			
@@ -141,6 +146,7 @@ for uniquetweet in uniquetweets:
 			
 			# get old stored avg sentiment for averaging
 			avgsent = results[key]['avgsentiment']
+			# avg sentiment
 			if score == 'P+':
 				avgsent += 2
 			elif score == 'P':
@@ -160,7 +166,8 @@ for uniquetweet in uniquetweets:
 print(results)
 
 deli()
-		
+
+# prettyprint results	
 pprint(results)
 
 # dump results as json file
